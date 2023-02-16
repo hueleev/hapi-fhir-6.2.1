@@ -840,7 +840,6 @@
 							<artifactId>hapi-fhir-testpage-overlay</artifactId>
 						</overlay>
 					</overlays>
-					<failOnMissingWebXml>false</failOnMissingWebXml>
 					<webXml>src/main/webapp/WEB-INF/web.xml</webXml>
 				</configuration>
 			</plugin>
@@ -861,30 +860,6 @@
 						</goals>
 					</execution>
 				</executions>
-			</plugin>
-			<plugin>
-				<groupId>org.basepom.maven</groupId>
-				<artifactId>duplicate-finder-maven-plugin</artifactId>
-				<version>1.5.0</version>
-				<executions>
-					<execution>
-						<id>default</id>
-						<phase>verify</phase>
-						<goals>
-							<goal>check</goal>
-						</goals>
-						<inherited>true</inherited>
-					</execution>
-				</executions>
-				<configuration>
-					<failBuildInCaseOfConflict>false</failBuildInCaseOfConflict>
-					<checkTestClasspath>false</checkTestClasspath>
-					<ignoredResourcePatterns>
-						<ignoredResourcePattern>.*\.txt$</ignoredResourcePattern>
-						<ignoredResourcePattern>.*\.html$</ignoredResourcePattern>
-						<ignoredResourcePattern>config/favicon.ico</ignoredResourcePattern>
-					</ignoredResourcePatterns>
-				</configuration>
 			</plugin>
 			<!-- jpa server base -->
 			<!--<plugin>
@@ -1065,14 +1040,6 @@
 				</executions>
 			</plugin>-->
 		</plugins>
-		<resources>
-			<resource>
-				<directory>${project.basedir}/src/main/resources</directory>
-			</resource>
-			<resource>
-				<directory>${project.basedir}/target/generated-resources/tinder</directory>
-			</resource>
-		</resources>
 	</build>
 
 	<profiles>
@@ -1083,6 +1050,25 @@
 					<groupId>org.springframework.boot</groupId>
 					<artifactId>spring-boot-starter-web</artifactId>
 					<version>${spring_boot_version}</version>
+				</dependency>
+			</dependencies>
+		</profile>
+		<!-- examples of how to start the server using the default profile-->
+		<!-- mvn clean package jetty:run -->
+		<!-- java -jar jetty-runner.jar target/hapi-fhir-jpaserver.war -->
+		<profile>
+			<id>jetty</id>
+			<dependencies>
+				<dependency>
+					<groupId>org.springframework.boot</groupId>
+					<artifactId>spring-boot-starter-web</artifactId>
+					<version>${spring_boot_version}</version>
+					<exclusions>
+						<exclusion>
+							<groupId>org.springframework.boot</groupId>
+							<artifactId>spring-boot-starter-tomcat</artifactId>
+						</exclusion>
+					</exclusions>
 				</dependency>
 			</dependencies>
 		</profile>
