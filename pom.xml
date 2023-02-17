@@ -23,7 +23,7 @@
 	</repositories>
 
 	<properties>
-		<java-version>11</java-version>
+		<java.version>11</java.version>
 		<!-- configure timestamp in MANIFEST.MF for maven-war-provider -->
 		<maven.build.timestamp.format>yyyy-MM-dd'T'HH:mm:ss'Z'</maven.build.timestamp.format>
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -122,9 +122,9 @@
 		<maven.compiler.source>11</maven.compiler.source>
 		<maven.compiler.target>11</maven.compiler.target>
 		<maven.compiler.release>11</maven.compiler.release>
-		<maven.compiler.testSource>11</maven.compiler.testSource>
+		<!--<maven.compiler.testSource>11</maven.compiler.testSource>
 		<maven.compiler.testTarget>11</maven.compiler.testTarget>
-		<maven.compiler.testRelease>11</maven.compiler.testRelease>
+		<maven.compiler.testRelease>11</maven.compiler.testRelease>-->
 	</properties>
 
 	<dependencies>
@@ -290,6 +290,11 @@
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-autoconfigure</artifactId>
+			<version>${spring_boot_version}</version>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-configuration-processor</artifactId>
 			<version>${spring_boot_version}</version>
 		</dependency>
 		<dependency>
@@ -775,9 +780,6 @@
 	</dependencies>
 
 	<build>
-		<!-- Tells Maven to name the generated WAR file as hapi-fhir-jpaserver.war -->
-		<finalName>redwood-fhir-server</finalName>
-
 		<pluginManagement>
 			<plugins>
 				<plugin>
@@ -788,9 +790,11 @@
 			</plugins>
 		</pluginManagement>
 
+		<!-- Tells Maven to name the generated WAR file as ROOT.war -->
+		<finalName>HAPI_FHIR_6</finalName>
+
 		<plugins>
-			<!-- jpaserver-starter -->
-			<!--<plugin>
+			<plugin>
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<version>${spring_boot_version}</version>
@@ -804,23 +808,35 @@
 						</configuration>
 					</execution>
 				</executions>
-			</plugin>-->
+			</plugin>
+			<!-- The following is not required for the application to build, but allows you to test it by issuing "mvn package jetty:run -Dspring.batch.job.enabled=false" from the command line. -->
+			<!--
+            <plugin>
+                <groupId>org.eclipse.jetty</groupId>
+                <artifactId>jetty-maven-plugin</artifactId>
+                <version>${jetty_version}</version>
+                <configuration>
+                    <webApp>
+                        <contextPath>/hapi-fhir-jpaserver</contextPath>
+                        <allowDuplicateFragmentNames>true</allowDuplicateFragmentNames>
+                    </webApp>
+                </configuration>
+            </plugin>
+            -->
+
+			<!-- Tell Maven which Java source version you want to use -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.10.1</version>
+				<version>2.5.1</version>
 				<configuration>
-					<release>11</release>
-					<forceJavacCompilerUse>true</forceJavacCompilerUse>
-					<encoding>UTF-8</encoding>
+					<source>${java.version}</source>
+					<target>${java.version}</target>
 					<compilerArgument>-Xlint:all</compilerArgument>
 					<showWarnings>false</showWarnings>
 					<showDeprecation>false</showDeprecation>
-					<!--<source>${java-version}</source>
-					<target>${java-version}</target>-->
 				</configuration>
 			</plugin>
-
 
 			<!-- The configuration here tells the WAR plugin to include the FHIR Tester overlay. You can omit it if you are not using that feature. -->
 			<plugin>
@@ -840,17 +856,17 @@
 							<artifactId>hapi-fhir-testpage-overlay</artifactId>
 						</overlay>
 					</overlays>
-					<webXml>src/main/webapp/WEB-INF/web.xml</webXml>
+					<failOnMissingWebXml>false</failOnMissingWebXml>
 				</configuration>
 			</plugin>
 
+			<!-- This is to run the integration tests -->
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-failsafe-plugin</artifactId>
-				<version>3.0.0-M5</version>
+				<version>2.12.4</version>
 				<configuration>
-					<useManifestOnlyJar>false</useManifestOnlyJar>
-					<useSystemClassLoader>false</useSystemClassLoader>
+					<redirectTestOutputToFile>true</redirectTestOutputToFile>
 				</configuration>
 				<executions>
 					<execution>
@@ -861,217 +877,146 @@
 					</execution>
 				</executions>
 			</plugin>
-			<!-- jpa server base -->
+
 			<!--<plugin>
-				<groupId>de.jpdigital</groupId>
-				<artifactId>hibernate54-ddl-maven-plugin</artifactId>
-				<version>2.3.0</version>
-				<configuration>
-					<dialects>
-						<param>h2</param>
-						<param>derby_10_7</param>
-						<param>mysql57</param>
-						<param>mariadb</param>
-						<param>oracle12c</param>
-						<param>sqlserver2012</param>
-					</dialects>
-					<customDialects>
-						<customDialect>ca.uhn.fhir.jpa.model.dialect.HapiFhirPostgres94Dialect</customDialect>
-						<customDialect>org.hibernate.dialect.CockroachDB201Dialect</customDialect>
-					</customDialects>
-					<outputDirectory>${project.build.directory}/classes/ca/uhn/hapi/fhir/jpa/docs/database</outputDirectory>
-					<packages>
-						<param>ca.uhn.fhir.jpa.entity</param>
-						<param>ca.uhn.fhir.jpa.model.entity</param>
-					</packages>
-				</configuration>
-				<executions>
-					<execution>
-						<phase>process-classes</phase>
-						<goals>
-							<goal>gen-ddl</goal>
-						</goals>
-					</execution>
-				</executions>
-				<dependencies>
-					&lt;!&ndash;
-					These have been added as explicit dependencies
-					as JDK9 no longer includes them by default
-					&ndash;&gt;
-					<dependency>
-						<groupId>org.glassfish.jaxb</groupId>
-						<artifactId>jaxb-runtime</artifactId>
-						<version>${jaxb_runtime_version}</version>
-					</dependency>
-					<dependency>
-						<groupId>ca.uhn.hapi.fhir</groupId>
-						<artifactId>hapi-fhir-jpaserver-model</artifactId>
-						<version>${hapi_version}</version>
-					</dependency>
-				</dependencies>
-			</plugin>
-			<plugin>
-				<groupId>ca.uhn.hapi.fhir</groupId>
-				<artifactId>hapi-tinder-plugin</artifactId>
-				<version>${hapi_version}</version>
-				<executions>
-					<execution>
-						<id>build_dstu2</id>
-						<goals>
-							<goal>generate-jparest-server</goal>
-						</goals>
-						<configuration>
-							<version>dstu2</version>
-							<configPackageBase>ca.uhn.fhir.jpa.config</configPackageBase>
-							<packageBase>ca.uhn.fhir.jpa.rp.dstu2</packageBase>
-							<targetResourceSpringBeansFile>hapi-fhir-server-resourceproviders-dstu2.xml
-							</targetResourceSpringBeansFile>
-							<baseResourceNames/>
-							<excludeResourceNames>
-								&lt;!&ndash; <excludeResourceName>OperationDefinition</excludeResourceName> <excludeResourceName>OperationOutcome</excludeResourceName> &ndash;&gt;
-							</excludeResourceNames>
-						</configuration>
-					</execution>
-					<execution>
-						<id>build_dstu3</id>
-						<goals>
-							<goal>generate-jparest-server</goal>
-						</goals>
-						<configuration>
-							<version>dstu3</version>
-							<configPackageBase>ca.uhn.fhir.jpa.config</configPackageBase>
-							<packageBase>ca.uhn.fhir.jpa.rp.dstu3</packageBase>
-							<targetResourceSpringBeansFile>hapi-fhir-server-resourceproviders-dstu3.xml
-							</targetResourceSpringBeansFile>
-							<baseResourceNames></baseResourceNames>
-							<excludeResourceNames>
-							</excludeResourceNames>
-						</configuration>
-					</execution>
-					<execution>
-						<id>build_r4</id>
-						<goals>
-							<goal>generate-jparest-server</goal>
-						</goals>
-						<configuration>
-							<version>r4</version>
-							<configPackageBase>ca.uhn.fhir.jpa.config</configPackageBase>
-							<packageBase>ca.uhn.fhir.jpa.rp.r4</packageBase>
-							<targetResourceSpringBeansFile>hapi-fhir-server-resourceproviders-r4.xml
-							</targetResourceSpringBeansFile>
-							<baseResourceNames></baseResourceNames>
-							<excludeResourceNames>
-							</excludeResourceNames>
-						</configuration>
-					</execution>
-					<execution>
-						<id>build_r4b</id>
-						<goals>
-							<goal>generate-jparest-server</goal>
-						</goals>
-						<configuration>
-							<version>r4b</version>
-							<configPackageBase>ca.uhn.fhir.jpa.config</configPackageBase>
-							<packageBase>ca.uhn.fhir.jpa.rp.r4b</packageBase>
-							<targetResourceSpringBeansFile>hapi-fhir-server-resourceproviders-r4b.xml
-							</targetResourceSpringBeansFile>
-							<baseResourceNames></baseResourceNames>
-							<excludeResourceNames>
-							</excludeResourceNames>
-						</configuration>
-					</execution>
-					<execution>
-						<id>build_r5</id>
-						<goals>
-							<goal>generate-jparest-server</goal>
-						</goals>
-						<configuration>
-							<version>r5</version>
-							<configPackageBase>ca.uhn.fhir.jpa.config</configPackageBase>
-							<packageBase>ca.uhn.fhir.jpa.rp.r5</packageBase>
-							<targetResourceSpringBeansFile>hapi-fhir-server-resourceproviders-r5.xml
-							</targetResourceSpringBeansFile>
-							<baseResourceNames></baseResourceNames>
-						</configuration>
-					</execution>
-				</executions>
-
-				<dependencies>
-					<dependency>
-						<groupId>ca.uhn.hapi.fhir</groupId>
-						<artifactId>hapi-fhir-structures-dstu2</artifactId>
-						<version>${hapi_version}</version>
-					</dependency>
-					<dependency>
-						<groupId>ca.uhn.hapi.fhir</groupId>
-						<artifactId>hapi-fhir-structures-dstu3</artifactId>
-						<version>${hapi_version}</version>
-					</dependency>
-					<dependency>
-						<groupId>ca.uhn.hapi.fhir</groupId>
-						<artifactId>hapi-fhir-structures-r4</artifactId>
-						<version>${hapi_version}</version>
-					</dependency>
-
-					<dependency>
-						<groupId>ca.uhn.hapi.fhir</groupId>
-						<artifactId>hapi-fhir-validation-resources-dstu3</artifactId>
-						<version>${hapi_version}</version>
-					</dependency>
-				</dependencies>
-			</plugin>
-			<plugin>
-				<groupId>org.codehaus.mojo</groupId>
-				<artifactId>build-helper-maven-plugin</artifactId>
-				<version>3.2.0</version>
-				<executions>
-					<execution>
-						<id>add-source</id>
-						<phase>generate-sources</phase>
-						<goals>
-							<goal>add-source</goal>
-						</goals>
-						<configuration>
-							<sources>
-								<source>target/generated-sources/tinder</source>
-							</sources>
-						</configuration>
-					</execution>
-				</executions>
-			</plugin>-->
+                <groupId>org.basepom.maven</groupId>
+                <artifactId>duplicate-finder-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <id>default</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>check</goal>
+                        </goals>
+                        <inherited>true</inherited>
+                    </execution>
+                </executions>
+                <configuration>
+                    <failBuildInCaseOfConflict>false</failBuildInCaseOfConflict>
+                    <checkTestClasspath>false</checkTestClasspath>
+                    &lt;!&ndash;
+                    <printEqualFiles>false</printEqualFiles>
+                    <failBuildInCaseOfDifferentContentConflict>true</failBuildInCaseOfDifferentContentConflict>
+                    <failBuildInCaseOfEqualContentConflict>true</failBuildInCaseOfEqualContentConflict>
+                    <failBuildInCaseOfConflict>true</failBuildInCaseOfConflict>
+                    <checkCompileClasspath>true</checkCompileClasspath>
+                    <checkRuntimeClasspath>false</checkRuntimeClasspath>
+                    <skip>false</skip>
+                    <quiet>false</quiet>
+                    <preferLocal>true</preferLocal>
+                    <useResultFile>true</useResultFile>
+                    <resultFileMinClasspathCount>2</resultFileMinClasspathCount>
+                    <resultFile>${project.build.directory}/duplicate-finder-result.xml</resultFile>
+                    &ndash;&gt;
+                    &lt;!&ndash;
+                    <ignoredDependencies>
+                        <dependency>
+                            <groupId>javax.el</groupId>
+                            <artifactId>javax.el-api</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>javax.mail</groupId>
+                            <artifactId>javax.mail-api</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>javax.activation</groupId>
+                            <artifactId>javax.activation-api</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>com.helger</groupId>
+                            <artifactId>ph-schematron</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>commons-logging</groupId>
+                            <artifactId>commons-logging</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.jscience</groupId>
+                            <artifactId>jscience</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.springframework</groupId>
+                            <artifactId>spring-jcl</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.springframework</groupId>
+                            <artifactId>spring-jcl</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>com.google.code.findbugs</groupId>
+                            <artifactId>annotations</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.apache.derby</groupId>
+                            <artifactId>derbyclient</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.apache.derby</groupId>
+                            <artifactId>derbynet</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.apache.derby</groupId>
+                            <artifactId>derbyclient</artifactId>
+                        </dependency>
+                        <dependency>
+                            <groupId>org.checkerframework</groupId>
+                            <artifactId>checker-compat-qual</artifactId>
+                        </dependency>
+                    </ignoredDependencies>
+                    &ndash;&gt;
+                    <ignoredResourcePatterns>
+                        <ignoredResourcePattern>.*\.txt$</ignoredResourcePattern>
+                        <ignoredResourcePattern>.*\.html$</ignoredResourcePattern>
+                        <ignoredResourcePattern>config/favicon.ico</ignoredResourcePattern>
+                    </ignoredResourcePatterns>
+                </configuration>
+            </plugin>-->
 		</plugins>
 	</build>
 
 	<profiles>
+		<!-- Package the war for your preference. Use the boot profile if you prefer a single jar/war
+        that can be started with and embedded application server. Default is jetty as it is assumed
+        that the main users of this project already have an app server.
+        Different profiles are needed as packing it for spring boot, makes the resulting war undeployable
+        due to a class shading issue between tomcat and jetty.
+        (the error is 'java.util.ServiceConfigurationError: org.apache.juli.logging.Log: org.eclipse.jetty.apache.jsp.JuliLog not a subtype')
+
+         -->
+
+		<!-- example of how to start the server using spring boot-->
+		<!-- mvn clean package spring-boot:repackage -Pboot && java -jar target/hapi-fhir-jpaserver.war -->
+
+		<!-- Use the boot profile for development and debugging options when using your IDE -->
 		<profile>
 			<id>boot</id>
 			<dependencies>
 				<dependency>
 					<groupId>org.springframework.boot</groupId>
 					<artifactId>spring-boot-starter-web</artifactId>
-					<version>${spring_boot_version}</version>
+					<version>2.7.4</version>
 				</dependency>
 			</dependencies>
 		</profile>
 		<!-- examples of how to start the server using the default profile-->
-		<!-- mvn clean package jetty:run -->
-		<!-- java -jar jetty-runner.jar target/hapi-fhir-jpaserver.war -->
-		<profile>
-			<id>jetty</id>
-			<dependencies>
-				<dependency>
-					<groupId>org.springframework.boot</groupId>
-					<artifactId>spring-boot-starter-web</artifactId>
-					<version>${spring_boot_version}</version>
-					<exclusions>
-						<exclusion>
-							<groupId>org.springframework.boot</groupId>
-							<artifactId>spring-boot-starter-tomcat</artifactId>
-						</exclusion>
-					</exclusions>
-				</dependency>
-			</dependencies>
-		</profile>
+		<!-- mvn clean package jetty:run -Dspring.batch.job.enabled=false -->
+		<!-- java -jar -Dspring.batch.job.enabled=false jetty-runner.jar target/hapi-fhir-jpaserver.war -->
+		<!--<profile>
+            <id>jetty</id>
+            <dependencies>
+                <dependency>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-starter-web</artifactId>
+                    <version>${spring_boot_version}</version>
+                    <exclusions>
+                        <exclusion>
+                            <groupId>org.springframework.boot</groupId>
+                            <artifactId>spring-boot-starter-tomcat</artifactId>
+                        </exclusion>
+                    </exclusions>
+                </dependency>
+            </dependencies>
+        </profile>-->
 	</profiles>
 
 </project>
